@@ -109,56 +109,32 @@ jar {
 
 // configure the maven publication
 publishing {
+	repositories {
+		mavenLocal()
+		if(project.hasProperty("calmilamsy_secret_publishing_cave_username")){
+			maven {
+				url = "https://maven.glass-launcher.net/releases"
+				credentials {
+					username "${project.calmilamsy_secret_publishing_cave_username}"
+					password "${project.calmilamsy_secret_publishing_cave_password}"
+				}
+			}
+		}
+
+		if(project.hasProperty("nyarepo_publishing_cave_username")){
+			maven {
+				url = "https://maven.fildand.cz/releases"
+				credentials {
+					username "${project.nyarepo_publishing_cave_username}"
+					password "${project.nyarepo_publishing_cave_password}"
+				}
+			}
+		}
+	}
+
 	publications {
 		mavenJava(MavenPublication) {
 			from components.java
 		}
 	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
-	}
 }
-// Call modifyXml after the processResources task
-
-
-// Modify XML task
-import groovy.xml.XmlSlurper
-import groovy.xml.XmlUtil
-
-task modifyXml {
-	doLast {
-		def xmlFile = file("${project.projectDir}/.idea/runConfigurations/Minecraft_Client.xml")
-
-		if (xmlFile.exists()) {
-			// Parse the XML file
-			def xml = new XmlSlurper().parse(xmlFile)
-			def vmParameters = xml.configuration[0].'VM_PARAMETERS'.text()
-
-			// Check if the new parameter already exists
-			if (!vmParameters.contains("-Dapple.awt.application.appearance=system")) {
-				// Append the new parameter
-				vmParameters += " -Dapple.awt.application.appearance=system"
-
-				// Update the XML with the new parameters
-				xml.configuration[0].'VM_PARAMETERS' = vmParameters
-
-				// Write the updated XML back to the file
-				def writer = new StringWriter()
-				XmlUtil.serialize(xml, writer)
-				xmlFile.text = writer.toString()
-				println "Updated VM_PARAMETERS in Minecraft_Client.xml"
-			} else {
-				println "VM_PARAMETER already contains the new parameter."
-			}
-		} else {
-			println "Minecraft_Client.xml not found!"
-		}
-	}
-}
-
-processResources.finalizedBy(modifyXml)
