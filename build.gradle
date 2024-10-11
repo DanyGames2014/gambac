@@ -1,10 +1,14 @@
 plugins {
-	id 'babric-loom' version '1.4.2'
+	id 'fabric-loom' version '1.7.3'
+	id 'babric-loom-extension' version '1.7.4'
 	id 'maven-publish'
 }
 
-sourceCompatibility = JavaVersion.VERSION_17
-targetCompatibility = JavaVersion.VERSION_17
+babric {
+	disableM1Fixes.set(true)
+}
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17
 
 archivesBaseName = project.archives_base_name
 version = project.mod_version
@@ -14,7 +18,6 @@ loom {
 	mixin {
 		useLegacyMixinAp = true
 	}
-	gluedMinecraftJar()
 	customMinecraftManifest.set("https://babric.github.io/manifest-polyfill/${minecraft_version}.json")
 	intermediaryUrl.set("https://maven.glass-launcher.net/babric/babric/intermediary/%1\$s/intermediary-%1\$s-v2.jar")
 }
@@ -66,56 +69,15 @@ repositories {
 	mavenCentral()
 }
 
-import org.gradle.internal.os.OperatingSystem
-
-//project.ext.lwjglVersion = "3.3.3"
-//switch (OperatingSystem.current()) {
-//	case OperatingSystem.LINUX:
-//		project.ext.lwjglNatives = "natives-linux"
-//		break
-//	case OperatingSystem.MAC_OS:
-//		project.ext.lwjglNatives = "natives-macos"
-//		break
-//	case OperatingSystem.WINDOWS:
-//		def osArch = System.getProperty("os.arch")
-//		project.ext.lwjglNatives = osArch.contains("64")
-//				? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
-//				: "natives-windows-x86"
-//		break
-//}
-
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings "net.glasslauncher:biny:${project.yarn_mappings}:v2"
 	modImplementation "babric:fabric-loader:${project.loader_version}"
 
-//	implementation("com.github.Adventurecraft-Awakening:AC-LWJGL3-Injector:0.0.5")
-//	implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
-//
-//	implementation "org.lwjgl:lwjgl-glfw:$lwjglVersion"
-//
-//	runtimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
-//	runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
-//	runtimeOnly "org.lwjgl:lwjgl-openal::$lwjglNatives"
-//	runtimeOnly "org.lwjgl:lwjgl-opengl::$lwjglNatives"
-
 	implementation "org.slf4j:slf4j-api:1.8.0-beta4"
 	implementation 'org.apache.logging.log4j:log4j-slf4j18-impl:2.17.2'
 	implementation "blue.endless:jankson:1.2.1"
-
-	modImplementation "net.modificationstation:StationAPI:${project.stapi_version}"
-
-	// Optional, but convenient mods for mod creators and users alike.
-	modImplementation("com.github.calmilamsy:ModMenu:${project.modmenu_version}") {
-		transitive false
-	}
-//	modImplementation("net.glasslauncher.mods:GlassConfigAPI:${project.gcapi_version}") {
-//		transitive false
-//	}
-//	modImplementation("net.glasslauncher:HowManyItems-Fabric-Unofficial:${project.howmanyitems_version}") {
-//		transitive false
-//	}
 }
 
 processResources {
@@ -125,11 +87,6 @@ processResources {
 		expand "version": project.version
 	}
 }
-
-//configurations.configureEach {
-	// Removes LWJGL2 dependencies
-//	exclude group: "org.lwjgl.lwjgl"
-//}
 
 tasks.withType(JavaCompile).configureEach {
 	// Minecraft 1.18 (1.18-pre2) upwards uses Java 17.
@@ -152,32 +109,56 @@ jar {
 
 // configure the maven publication
 publishing {
-	repositories {
-		mavenLocal()
-		if(project.hasProperty("calmilamsy_secret_publishing_cave_username")){
-			maven {
-				url = "https://maven.glass-launcher.net/releases"
-				credentials {
-					username "${project.calmilamsy_secret_publishing_cave_username}"
-					password "${project.calmilamsy_secret_publishing_cave_password}"
-				}
-			}
-		}
-
-		if(project.hasProperty("nyarepo_publishing_cave_username")){
-			maven {
-				url = "https://maven.fildand.cz/releases"
-				credentials {
-					username "${project.nyarepo_publishing_cave_username}"
-					password "${project.nyarepo_publishing_cave_password}"
-				}
-			}
-		}
-	}
-
 	publications {
 		mavenJava(MavenPublication) {
 			from components.java
 		}
 	}
+
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
 }
+// Call modifyXml after the processResources task
+
+
+// Modify XML task
+import groovy.xml.XmlSlurper
+import groovy.xml.XmlUtil
+
+task modifyXml {
+	doLast {
+		def xmlFile = file("${project.projectDir}/.idea/runConfigurations/Minecraft_Client.xml")
+
+		if (xmlFile.exists()) {
+			// Parse the XML file
+			def xml = new XmlSlurper().parse(xmlFile)
+			def vmParameters = xml.configuration[0].'VM_PARAMETERS'.text()
+
+			// Check if the new parameter already exists
+			if (!vmParameters.contains("-Dapple.awt.application.appearance=system")) {
+				// Append the new parameter
+				vmParameters += " -Dapple.awt.application.appearance=system"
+
+				// Update the XML with the new parameters
+				xml.configuration[0].'VM_PARAMETERS' = vmParameters
+
+				// Write the updated XML back to the file
+				def writer = new StringWriter()
+				XmlUtil.serialize(xml, writer)
+				xmlFile.text = writer.toString()
+				println "Updated VM_PARAMETERS in Minecraft_Client.xml"
+			} else {
+				println "VM_PARAMETER already contains the new parameter."
+			}
+		} else {
+			println "Minecraft_Client.xml not found!"
+		}
+	}
+}
+
+processResources.finalizedBy(modifyXml)

@@ -20,7 +20,7 @@ import java.awt.*;
 @Mixin(MinecraftApplet.class)
 public class MinecraftAppletMixin extends Applet {
 
-    @Shadow private Minecraft field_2832;
+    @Shadow private Minecraft minecraft;
 
     /**
      * @author Proudly overwritten by DanyGames2014
@@ -33,26 +33,26 @@ public class MinecraftAppletMixin extends Applet {
             var1 = this.getParameter("fullscreen").equalsIgnoreCase("true");
         }
 
-        this.field_2832 = new BrnoMinecraft(this.getWidth(), this.getHeight(), var1);
-        this.field_2832.field_2810 = this.getDocumentBase().getHost();
+        this.minecraft = new BrnoMinecraft(this.getWidth(), this.getHeight(), var1);
+        this.minecraft.hostAddress = this.getDocumentBase().getHost();
         if (this.getDocumentBase().getPort() > 0) {
             StringBuilder var10000 = new StringBuilder();
-            Minecraft var10002 = this.field_2832;
-            var10002.field_2810 = var10000.append(var10002.field_2810).append(":").append(this.getDocumentBase().getPort()).toString();
+            Minecraft var10002 = this.minecraft;
+            var10002.hostAddress = var10000.append(var10002.hostAddress).append(":").append(this.getDocumentBase().getPort()).toString();
         }
 
         if (this.getParameter("username") != null && this.getParameter("sessionid") != null) {
-            this.field_2832.session = new Session(this.getParameter("username"), this.getParameter("sessionid"));
-            System.out.println("Setting user: " + this.field_2832.session.username);
+            this.minecraft.session = new Session(this.getParameter("username"), this.getParameter("sessionid"));
+            System.out.println("Setting user: " + this.minecraft.session.username);
             if (this.getParameter("mppass") != null) {
-                this.field_2832.session.mpPass = this.getParameter("mppass");
+                this.minecraft.session.mpPass = this.getParameter("mppass");
             }
         } else {
-            this.field_2832.session = new Session("Payer" + System.currentTimeMillis() % 10000, "");
+            this.minecraft.session = new Session("Payer" + System.currentTimeMillis() % 10000, "");
         }
 
         if (this.getParameter("server") != null && this.getParameter("port") != null) {
-            this.field_2832.method_2117(this.getParameter("server"), Integer.parseInt(this.getParameter("port")));
+            this.minecraft.setStartupServer(this.getParameter("server"), Integer.parseInt(this.getParameter("port")));
         }
 
         SwingUtilities.invokeLater(() -> {
@@ -60,7 +60,7 @@ public class MinecraftAppletMixin extends Applet {
             hideThemAll(this.getParent().getParent());
             hideThemAll(this.getParent());
             hideThemAll(this);
-            this.method_2153();
+            this.startThread();
         });
     }
 
@@ -82,8 +82,8 @@ public class MinecraftAppletMixin extends Applet {
      * @reason because i don't give a shit
      */
     @Overwrite
-    public void method_2153() { // startMainThread
-        this.field_2832.run();
+    public void startThread() { // startMainThread
+        this.minecraft.run();
     }
 
     @Inject(method = "destroy", at = @At(value = "HEAD"), remap = false, cancellable = true)
@@ -91,13 +91,13 @@ public class MinecraftAppletMixin extends Applet {
         ci.cancel();
     }
 
-    @Inject(method = "method_2154", at= @At(value = "HEAD"), cancellable = true)
-    public void method_2154(CallbackInfo ci) { // onRemoveNotify / shutdown
+    @Inject(method = "stopThread", at= @At(value = "HEAD"), cancellable = true)
+    public void stopThread(CallbackInfo ci) { // onRemoveNotify / shutdown
         ci.cancel();
     }
 
-    @Inject(method = "method_2155", at = @At(value = "HEAD"), cancellable = true)
-    public void method_2155(CallbackInfo ci) { // clearApplet
+    @Inject(method = "clearMemory", at = @At(value = "HEAD"), cancellable = true)
+    public void clearMemory(CallbackInfo ci) { // clearApplet
         ci.cancel();
     }
 }
