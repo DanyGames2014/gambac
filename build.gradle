@@ -69,15 +69,56 @@ repositories {
 	mavenCentral()
 }
 
+import org.gradle.internal.os.OperatingSystem
+
+//project.ext.lwjglVersion = "3.3.3"
+//switch (OperatingSystem.current()) {
+//	case OperatingSystem.LINUX:
+//		project.ext.lwjglNatives = "natives-linux"
+//		break
+//	case OperatingSystem.MAC_OS:
+//		project.ext.lwjglNatives = "natives-macos"
+//		break
+//	case OperatingSystem.WINDOWS:
+//		def osArch = System.getProperty("os.arch")
+//		project.ext.lwjglNatives = osArch.contains("64")
+//				? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
+//				: "natives-windows-x86"
+//		break
+//}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	mappings "net.glasslauncher:biny:${project.yarn_mappings}:v2"
 	modImplementation "babric:fabric-loader:${project.loader_version}"
 
+//	implementation("com.github.Adventurecraft-Awakening:AC-LWJGL3-Injector:0.0.5")
+//	implementation platform("org.lwjgl:lwjgl-bom:$lwjglVersion")
+//
+//	implementation "org.lwjgl:lwjgl-glfw:$lwjglVersion"
+//
+//	runtimeOnly "org.lwjgl:lwjgl::$lwjglNatives"
+//	runtimeOnly "org.lwjgl:lwjgl-glfw::$lwjglNatives"
+//	runtimeOnly "org.lwjgl:lwjgl-openal::$lwjglNatives"
+//	runtimeOnly "org.lwjgl:lwjgl-opengl::$lwjglNatives"
+
 	implementation "org.slf4j:slf4j-api:1.8.0-beta4"
 	implementation 'org.apache.logging.log4j:log4j-slf4j18-impl:2.17.2'
 	implementation "blue.endless:jankson:1.2.1"
+
+	modImplementation "net.modificationstation:StationAPI:${project.stapi_version}"
+
+	// Optional, but convenient mods for mod creators and users alike.
+	modImplementation("com.github.calmilamsy:ModMenu:${project.modmenu_version}") {
+		transitive false
+	}
+//	modImplementation("net.glasslauncher.mods:GlassConfigAPI:${project.gcapi_version}") {
+//		transitive false
+//	}
+//	modImplementation("net.glasslauncher:HowManyItems-Fabric-Unofficial:${project.howmanyitems_version}") {
+//		transitive false
+//	}
 }
 
 processResources {
@@ -87,6 +128,11 @@ processResources {
 		expand "version": project.version
 	}
 }
+
+//configurations.configureEach {
+// Removes LWJGL2 dependencies
+//	exclude group: "org.lwjgl.lwjgl"
+//}
 
 tasks.withType(JavaCompile).configureEach {
 	// Minecraft 1.18 (1.18-pre2) upwards uses Java 17.
@@ -100,7 +146,6 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 }
-
 jar {
 	from("LICENSE") {
 		rename { "${it}_${project.archivesBaseName}"}
