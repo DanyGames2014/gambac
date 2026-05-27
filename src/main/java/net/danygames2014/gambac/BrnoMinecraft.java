@@ -18,9 +18,9 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 
 public class BrnoMinecraft extends Minecraft {
-
     private final Frame frame;
     private int previousWidth;
     private int previousHeight;
@@ -140,10 +140,12 @@ public class BrnoMinecraft extends Minecraft {
 
     @Override
     public void toggleFullscreen() {
-        try {
-            this.fullscreen = !this.fullscreen;
+        boolean fullscreen = Display.isFullscreen();
 
-            if (this.fullscreen) {
+        try {
+            fullscreen = !fullscreen;
+
+            if (fullscreen) {
                 this.previousWidth = Display.getWidth();
                 this.previousHeight = Display.getHeight();
 
@@ -168,11 +170,16 @@ public class BrnoMinecraft extends Minecraft {
                 this.resize(this.displayWidth, this.displayHeight);
             }
 
-            Display.setFullscreen(this.fullscreen);
+            Display.setFullscreen(fullscreen);
             Display.update();
         } catch (Exception e) {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
+        }
+        
+        // Setting the this.fullscreen field break fullscreening on X11
+        if (!System.getProperty("os.name").toLowerCase(Locale.US).contains("linux")) {
+            this.fullscreen = fullscreen;
         }
     }
 
