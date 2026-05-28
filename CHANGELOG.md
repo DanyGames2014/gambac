@@ -1,0 +1,1 @@
+* Fix fullscreening being broken on Linux X11
