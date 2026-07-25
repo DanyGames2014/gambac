@@ -8,9 +8,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import javax.swing.*;
 import java.applet.Applet;
@@ -18,10 +15,12 @@ import java.awt.*;
 
 @SuppressWarnings({"removal", "StringBufferReplaceableByString"})
 @Mixin(MinecraftApplet.class)
-public class MinecraftAppletMixin extends Applet {
-
+public abstract class MinecraftAppletMixin extends Applet {
     @Shadow
     private Minecraft minecraft;
+
+    @Shadow
+    public abstract void startThread();
 
     /**
      * @author Proudly overwritten by DanyGames2014
@@ -29,8 +28,8 @@ public class MinecraftAppletMixin extends Applet {
      */
     @Overwrite(remap = false)
     public void init() {
-        //System.out.println("Properties:");
-        //System.getProperties().forEach( (k, v) -> System.out.println(k + " : " + v));
+//        System.out.println("Properties:");
+//        System.getProperties().forEach( (k, v) -> System.out.println(k + " : " + v));
 
         // PrismLauncher Window Size
         if (System.getProperty("org.prismlauncher.window.dimensions") != null) {
@@ -95,29 +94,5 @@ public class MinecraftAppletMixin extends Applet {
             }
         } catch (NullPointerException ignored) {
         }
-    }
-
-    /**
-     * @author DanyGames2014
-     * @reason because i don't give a shit
-     */
-    @Overwrite
-    public void startThread() { // startMainThread
-        this.minecraft.run();
-    }
-
-    @Inject(method = "destroy", at = @At(value = "HEAD"), remap = false, cancellable = true)
-    public void destroy(CallbackInfo ci) {
-        ci.cancel();
-    }
-
-    @Inject(method = "stopThread", at = @At(value = "HEAD"), cancellable = true)
-    public void stopThread(CallbackInfo ci) {
-        ci.cancel();
-    }
-
-    @Inject(method = "clearMemory", at = @At(value = "HEAD"), cancellable = true)
-    public void clearMemory(CallbackInfo ci) {
-        ci.cancel();
     }
 }
