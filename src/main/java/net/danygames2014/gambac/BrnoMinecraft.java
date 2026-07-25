@@ -16,8 +16,10 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class BrnoMinecraft extends Minecraft {
@@ -58,12 +60,17 @@ public class BrnoMinecraft extends Minecraft {
         
         // Window Title
         try {
-            if (System.getProperty("org.prismlauncher.window.title") != null && System.getProperty("gambacUsePrismTitle") != null) {
-                // PrismLauncher Window Title
-                Display.setTitle(System.getProperty("org.prismlauncher.window.title"));
+            if (System.getProperty("gambacCustomTitle") != null) {
+                // Custom Window Title
+                Display.setTitle(System.getProperty("gambacCustomTitle"));
             } else {
-                // Fallback
-                Display.setTitle("Minecraft Beta 1.7.3");
+                if (System.getProperty("org.prismlauncher.window.title") != null && (System.getProperty("gambacUsePrismTitle") == null || Boolean.parseBoolean(System.getProperty("gambacUsePrismTitle")))) {
+                    // PrismLauncher Window Title
+                    Display.setTitle(System.getProperty("org.prismlauncher.window.title"));
+                } else {
+                    // Fallback
+                    Display.setTitle("Minecraft Beta 1.7.3");
+                }
             }
         } catch (Exception ignored) {
             // If something happens, fallback to the default title
@@ -71,15 +78,30 @@ public class BrnoMinecraft extends Minecraft {
         }
 
         // Window Icon
-        ByteBuffer[] icons = new ByteBuffer[2];
-        try {
-            icons[0] = loadIcon("/assets/gambac/icons/16.png");
-            icons[1] = loadIcon("/assets/gambac/icons/32.png");
-        } catch (Exception ignored) {
+        ByteBuffer[] icons = null;
+        
+        // Try to use Prism provided icons
+        if (System.getProperty("org.prismlauncher.instance.icon.path") != null && (System.getProperty("gambacUsePrismIcon") == null || Boolean.parseBoolean(System.getProperty("gambacUsePrismIcon")))) {
+            String absolutePath = new File(Minecraft.getRunDirectory(), System.getProperty("org.prismlauncher.instance.icon.path")).getAbsolutePath();
+            icons = loadIconsFromFile(absolutePath);
+            if (icons != null) {
+                Display.setIcon(icons);
+            }
         }
+        
+        // Fallback to internal icons
+        if (icons == null) {
+            try {
+                icons = new ByteBuffer[2];
+                icons[0] = loadIconFromJar("/assets/gambac/icons/16.png");
+                icons[1] = loadIconFromJar("/assets/gambac/icons/32.png");
+            } catch (Exception ignored) {
+                
+            }
 
-        if (icons[0] != null && icons[1] != null) {
-            Display.setIcon(icons);
+            if (icons[0] != null && icons[1] != null) {
+                Display.setIcon(icons);
+            }
         }
 
         // Make the display current
@@ -91,30 +113,51 @@ public class BrnoMinecraft extends Minecraft {
             //noinspection CallToPrintStackTrace
             e.printStackTrace();
         }
-    }
 
-
-    @Override
-    public void tick() {
+        // Set the framebuffer to SRGB if we are on a Mac and not in a Linux environment
         if (GL11.glGetString(GL11.GL_RENDERER).contains("Apple M") && !System.getProperty("os.name").toLowerCase().contains("linux")) {
             GL11.glEnable(GL30.GL_FRAMEBUFFER_SRGB);
         }
-
-        if (Display.getWidth() != this.displayWidth || Display.getHeight() != this.displayHeight) {
-            this.resize(Display.getWidth(), Display.getHeight());
-        }
-
-        super.tick();
     }
 
-    private static ByteBuffer loadIcon(String path) {
+    private static ByteBuffer[] loadIconsFromFile(String path) {
+        try {
+            BufferedImage image = ImageIO.read(new File(path));
+            
+            int imageSize = Math.max(image.getWidth(), image.getHeight());
+            
+            ArrayList<ByteBuffer> icons = new ArrayList<>(1);
+            for (int size = 16; size <= imageSize; size <<= 1) {
+                Image scaledImage = image.getScaledInstance(size, -1, BufferedImage.SCALE_AREA_AVERAGING);
+                BufferedImage bufferedImage = new BufferedImage(size, size, image.getType());
+                
+                int drawX = (size - scaledImage.getWidth(null)) / 2;
+                int drawY = (size - scaledImage.getHeight(null)) / 2;
+                bufferedImage.getGraphics().drawImage(scaledImage, drawX, drawY, null);
+                icons.add(convertImageToByteBuffer(bufferedImage));
+            }
+            
+            return icons.toArray(new ByteBuffer[0]);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    private static ByteBuffer loadIconFromJar(String path) {
         try {
             InputStream stream = BrnoMinecraft.class.getResourceAsStream(path);
             if (stream == null) {
                 throw new RuntimeException("Icon resource not found: " + path);
             }
             BufferedImage image = ImageIO.read(stream);
-
+            return convertImageToByteBuffer(image);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    private static ByteBuffer convertImageToByteBuffer(BufferedImage image) {
+        try {
             int[] pixels = new int[image.getWidth() * image.getHeight()];
             image.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels, 0, image.getWidth());
 
@@ -137,6 +180,14 @@ public class BrnoMinecraft extends Minecraft {
         }
     }
 
+    @Override
+    public void tick() {
+        if (Display.getWidth() != this.displayWidth || Display.getHeight() != this.displayHeight) {
+            this.resize(Display.getWidth(), Display.getHeight());
+        }
+
+        super.tick();
+    }
 
     @Override
     public void toggleFullscreen() {
